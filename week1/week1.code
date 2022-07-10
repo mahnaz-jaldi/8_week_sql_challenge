@@ -1,7 +1,7 @@
-/* Case Study #1 - Danny's Diner
-link: https://8weeksqlchallenge.com/case-study-1/
-*/
-
+-------------------------------------------------
+-- Data with Danny - 8 Week Challenge (Week 2) --
+-- https://8weeksqlchallenge.com/case-study-1/ --
+-------------------------------------------------
 create table week1.sales (
 customer_id varchar(1),
 order_date date,
