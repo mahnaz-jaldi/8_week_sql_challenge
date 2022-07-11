@@ -440,7 +440,21 @@ join #cleaned_runner_orders on #cleaned_customer_orders.order_id=#cleaned_runner
 --------------------------------------------------------------------
 
 --3-Is there any relationship between the number of pizzas and how long the order takes to prepare?
+select #cleaned_customer_orders.order_id, COUNT(#cleaned_customer_orders.pizza_id) number_of_pizzas, DATEpart(MINUTE,#cleaned_runner_orders.pickup_time-#cleaned_customer_orders.order_time) prepare_time from #cleaned_customer_orders
+join #cleaned_runner_orders on #cleaned_customer_orders.order_id=#cleaned_runner_orders.order_id
+where cancellation=''
+group by #cleaned_customer_orders.order_id, #cleaned_runner_orders.pickup_time, #cleaned_customer_orders.order_time
 
+order_id    number_of_pizzas prepare_time
+----------- ---------------- ------------
+1           1                10
+2           1                10
+3           2                21
+4           3                29
+5           1                10
+7           1                10
+8           1                20
+10          2                15
 
 --------------------------------------------------------------------
 
