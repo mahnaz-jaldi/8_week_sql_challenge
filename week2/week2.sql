@@ -43,6 +43,7 @@ VALUES
   ('10', '104', '1', 'null', 'null', '2020-01-11 18:34:49'),
   ('10', '104', '1', '2, 6', '1, 4', '2020-01-11 18:34:49');
 
+ 
   /* creating runner orders table */
   CREATE TABLE week2.runner_orders (
   "order_id" INTEGER,
@@ -153,7 +154,7 @@ VALUES
   alter column pickup_time datetime
   alter table [week2].[pizza_names]
   alter column [pizza_name] varchar(10)
-  alter table  pizza_recipes
+  alter table  week2.pizza_recipes
   alter column [toppings] varchar(25)
 
   /* Case Study Questions
@@ -175,17 +176,17 @@ select runner_id, COUNT(cancellation) from #cleaned_runner_orders
 where cancellation=''
 group by runner_id
 --4-How many of each type of pizza was delivered?
-select pizza_id, count(cancellation) from #cleaned_customer_orders
+select pizza_id, count(cancellation) number_of_cancelled from #cleaned_customer_orders
 inner join #cleaned_runner_orders on #cleaned_customer_orders.order_id=#cleaned_runner_orders.order_id
 where cancellation=''
 group by pizza_id
 --5-How many Vegetarian and Meatlovers were ordered by each customer?
-select #cleaned_customer_orders.customer_id , week2.pizza_names.pizza_name, count(week2.pizza_names.pizza_name)
+select #cleaned_customer_orders.customer_id , week2.pizza_names.pizza_name, count(week2.pizza_names.pizza_name) quantity
 from #cleaned_customer_orders
 join week2.pizza_names on week2.pizza_names.pizza_id=#cleaned_customer_orders.pizza_id
 group by pizza_name, customer_id
 --6-What was the maximum number of pizzas delivered in a single order?
-select top 1 order_id, count(pizza_id) from #cleaned_customer_orders
+select top 1 order_id, count(pizza_id) maximum from #cleaned_customer_orders
 group by order_id
 order by count(pizza_id) desc
 --7-For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
@@ -212,10 +213,10 @@ from #cleaned_customer_orders
 join #cleaned_runner_orders on #cleaned_runner_orders.order_id=#cleaned_customer_orders.order_id
 where cancellation=''
 --9-What was the total volume of pizzas ordered for each hour of the day?
-select DATEPART(HOUR, order_time) hour_of_day , COUNT(order_id) from #cleaned_customer_orders
+select DATEPART(HOUR, order_time) hour_of_day , COUNT(order_id) volume_of_orders from #cleaned_customer_orders
 group by DATEPART(HOUR, order_time)
 --10-What was the volume of orders for each day of the week?
-select DATEname(WEEKDAY, order_time) day_of_week , COUNT(order_id) from #cleaned_customer_orders
+select DATEname(WEEKDAY, order_time) day_of_week , COUNT(order_id) volume_of_orders from #cleaned_customer_orders
 group by DATEname(WEEKDAY, order_time)
 order by DATEname(WEEKDAY, order_time)
 
@@ -228,11 +229,12 @@ group by DATEPART(week, registration_date)
 select avg(DATEDIFF(MINUTE,#cleaned_runner_orders.pickup_time,#cleaned_customer_orders.order_time)) from #cleaned_customer_orders
 join #cleaned_runner_orders on #cleaned_customer_orders.order_id=#cleaned_runner_orders.order_id
 --3-Is there any relationship between the number of pizzas and how long the order takes to prepare?
-/*select #cleaned_customer_orders.order_id, COUNT(#cleaned_customer_orders.pizza_id) number_of_pizzas, DATEDIFF(MINUTE,#cleaned_runner_orders.pickup_time,#cleaned_customer_orders.order_time) prepare_time from #cleaned_customer_orders
+select #cleaned_customer_orders.order_id, COUNT(#cleaned_customer_orders.pizza_id) number_of_pizzas, DATEpart(MINUTE,#cleaned_runner_orders.pickup_time-#cleaned_customer_orders.order_time) prepare_time from #cleaned_customer_orders
 join #cleaned_runner_orders on #cleaned_customer_orders.order_id=#cleaned_runner_orders.order_id
-group by #cleaned_customer_orders.order_id,#cleaned_customer_orders.pizza_id, #cleaned_runner_orders.pickup_time, #cleaned_customer_orders.order_time*/
+where cancellation=''
+group by #cleaned_customer_orders.order_id, #cleaned_runner_orders.pickup_time, #cleaned_customer_orders.order_time
 --4-What was the average distance travelled for each customer?
-select #cleaned_customer_orders.customer_id, avg(distance) from #cleaned_runner_orders
+select #cleaned_customer_orders.customer_id, avg(distance) average_distance from #cleaned_runner_orders
 join #cleaned_customer_orders on #cleaned_runner_orders.order_id=#cleaned_customer_orders.order_id
 where cancellation=''
 group by #cleaned_customer_orders.customer_id
@@ -243,21 +245,28 @@ where cancellation=''
 select order_id, runner_id, (distance/duration)*60 speed from #cleaned_runner_orders
 where cancellation=''
 --7-What is the successful delivery percentage for each runner?
-select runner_id, 100*sum(case when cancellation='' then 1 else 0 end)/COUNT(*) from #cleaned_runner_orders
+select runner_id, 100*sum(case when cancellation='' then 1 else 0 end)/COUNT(*) successful_delivery_percentage from #cleaned_runner_orders
 group by runner_id
 
 -- C: Ingredient Optimisation
 -----------------------------------------------------
 --1-What are the standard ingredients for each pizza?
-
+with recipes_cte as 
+(select pizza_id, cast(value as int) topping_id from week2.pizza_recipes
+cross apply string_split(toppings, ',') 
+)
+select week2.pizza_names.pizza_id, recipes_cte.topping_id, week2.pizza_toppings.topping_name from week2.pizza_names
+join recipes_cte on recipes_cte.pizza_id=week2.pizza_names.pizza_id
+join week2.pizza_toppings on recipes_cte.topping_id=week2.pizza_toppings.topping_id
+order by week2.pizza_names.pizza_id, recipes_cte.topping_id
 --2-What was the most commonly added extra?
-select count(value) , order_id from #cleaned_customer_orders
+select count(value) most_common_extra , order_id from #cleaned_customer_orders
 cross apply string_split(extras, ',')
 where extras<>''
 group by order_id
 order by count(value) desc
 --3-What was the most common exclusion?
-select count(value) , order_id from #cleaned_customer_orders
+select count(value) most_common_exclusion, order_id from #cleaned_customer_orders
 cross apply string_split(exclusions, ',')
 where exclusions<>''
 group by order_id
@@ -274,24 +283,13 @@ order by count(value) desc
 -- C: Pricing and Ratings
 -----------------------------------------------------
 --1-If a Meat Lovers pizza costs $12 and Vegetarian costs $10 and there were no charges for changes - how much money has Pizza Runner made so far if there are no delivery fees?
-select sum(case when pizza_name='Meatlovers' then 12 else 10 end)
+select sum(case when pizza_name='Meatlovers' then 12 else 10 end) pizza_cost
 from #cleaned_customer_orders
 join week2.pizza_names on week2.pizza_names.pizza_id=#cleaned_customer_orders.pizza_id
 join #cleaned_runner_orders on #cleaned_runner_orders.order_id=#cleaned_customer_orders.order_id
 where cancellation=''
 --2-What if there was an additional $1 charge for any pizza extras?
 ---Add cheese is $1 extra
-/*with extra_cte (number_of_extras, order_id) as
-(select count(value), order_id from #cleaned_customer_orders
-cross apply string_split(extras, ',')
-where extras<>''
-group by order_id
-select sum(case when pizza_name='Meatlovers' then (12+COUNT(value))
-else (10+COUNT(value))
-end) from extra_cte
-join week2.pizza_names on week2.pizza_names.pizza_id=extra_cte.order_id
-join #cleaned_runner_orders on #cleaned_runner_orders.order_id=extra_cte.order_id
-where cancellation=''*/
 --3-The Pizza Runner team now wants to add an additional ratings system that allows customers to rate their runner, how would you design an additional table for this new dataset - generate a schema for this new table and insert your own data for ratings for each successful customer order between 1 to 5.
 --4-Using your newly generated table - can you join all of the information together to form a table which has the following information for successful deliveries?
 ---customer_id
@@ -305,3 +303,7 @@ where cancellation=''*/
 ---Average speed
 ---Total number of pizzas
 --5-If a Meat Lovers pizza was $12 and Vegetarian $10 fixed prices with no cost for extras and each runner is paid $0.30 per kilometre traveled - how much money does Pizza Runner have left over after these deliveries?
+select sum(case when pizza_id=1 then 12 else 10 end)-sum(#cleaned_runner_orders.distance*0.3) left_money
+from #cleaned_runner_orders
+join #cleaned_customer_orders on #cleaned_runner_orders.order_id=#cleaned_customer_orders.order_id
+where cancellation=''
