@@ -615,3 +615,14 @@ where cancellation=''
 ---Average speed
 ---Total number of pizzas
 --5-If a Meat Lovers pizza was $12 and Vegetarian $10 fixed prices with no cost for extras and each runner is paid $0.30 per kilometre traveled - how much money does Pizza Runner have left over after these deliveries?
+select sum(case when pizza_id=1 then 12 else 10 end)-sum(#cleaned_runner_orders.distance*0.3) left_money
+from #cleaned_runner_orders
+join #cleaned_customer_orders on #cleaned_runner_orders.order_id=#cleaned_customer_orders.order_id
+where cancellation=''
+
+left_money
+----------------------
+73.38
+
+--------------------------------------------------------------------
+--------------------------------------------------------------------
