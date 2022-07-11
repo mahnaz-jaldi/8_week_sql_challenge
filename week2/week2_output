@@ -515,6 +515,31 @@ runner_id   successful_delivery_percentage
 -- C: Ingredient Optimisation
 -----------------------------------------------------
 --1-What are the standard ingredients for each pizza?
+with recipes_cte as 
+(select pizza_id, cast(value as int) topping_id from week2.pizza_recipes
+cross apply string_split(toppings, ',') 
+)
+select week2.pizza_names.pizza_id, recipes_cte.topping_id, week2.pizza_toppings.topping_name from week2.pizza_names
+join recipes_cte on recipes_cte.pizza_id=week2.pizza_names.pizza_id
+join week2.pizza_toppings on recipes_cte.topping_id=week2.pizza_toppings.topping_id
+order by week2.pizza_names.pizza_id, recipes_cte.topping_id
+
+pizza_id    topping_id  topping_name
+----------- ----------- -------------
+1           1           Bacon
+1           2           BBQ Sauce
+1           3           Beef
+1           4           Cheese
+1           5           Chicken
+1           6           Mushrooms
+1           8           Pepperoni
+1           10          Salami
+2           4           Cheese
+2           6           Mushrooms
+2           7           Onions
+2           9           Peppers
+2           11          Tomatoes
+2           12          Tomato Sauce
 
 --------------------------------------------------------------------
 
